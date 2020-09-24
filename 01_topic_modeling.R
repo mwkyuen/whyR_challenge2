@@ -42,15 +42,15 @@ tibble(
 
 comments_lda <- read_rds("model/comments_lda_7")
 
-comments_topic <- tidy(comments_lda, matrix = "beta")
+comments_beta <- tidy(comments_lda, matrix = "beta")
 
-top_terms <- comments_topic %>%
+top_beta <- comments_beta %>%
   group_by(topic) %>%
   top_n(15, beta) %>%
   ungroup() %>%
   arrange(topic, -beta)
 
-top_terms %>%
+top_beta %>%
   mutate(term = reorder(term, beta)) %>%
   ggplot(aes(term, beta, fill = factor(topic))) +
   geom_col(show.legend = F) +
@@ -59,50 +59,97 @@ top_terms %>%
   xlab('Word')
 
 
+## Gamma models
+comments_lda <- read_rds("model/comments_lda_7")
+
+comments_gamma <- tidy(comments_lda, matrix = "gamma")
+
+# top_gamma <- comments_gamma %>%
+#   group_by(topic) %>%
+#   top_n(15, gamma) %>%
+#   ungroup() %>%
+#   arrange(topic, -gamma)
+
+top_gamma <- comments_gamma %>%
+  group_by(topic) %>%
+  top_n(15, gamma) %>%
+  # filter(gamma < 0.25) %>%
+  ungroup() %>%
+  arrange(topic, -gamma)
+
+top_gamma %>%
+  mutate(document = reorder(document, gamma)) %>%
+  ggplot(aes(document, gamma, fill = factor(topic))) +
+  geom_col(show.legend = F) +
+  facet_wrap(~ topic, scales = "free") +
+  coord_flip() +
+  xlab('Word')
 
 
+group_users <- comments_gamma %>%
+  group_by(document) %>%
+  top_n(1, gamma) %>%
+  rename(by = document)
 
-afinn <- comments_unnested %>%
+comments_groups <- comments_unnested %>%
+  inner_join(group_users, by = "by") %>%
+  select(by, word, topic)
+
+
+afinn <- comments_groups %>%
   inner_join(get_sentiments("afinn")) %>%
-  group_by(id) %>%
+  group_by(topic) %>%
   summarize(value = sum(value)) %>%
   ungroup() %>%
   mutate(lexicon = "afinn")
 
-bing <- comments_unnested %>%
+bing <- comments_groups %>%
   inner_join(get_sentiments("bing")) %>%
   mutate(value = ifelse(sentiment == "positive", 1, -1)) %>%
-  group_by(id) %>%
+  group_by(topic) %>%
   summarize(value = sum(value)) %>%
   mutate(lexicon = "bing")
 
-nrc <- comments_unnested %>%
+nrc <- comments_groups %>%
   inner_join(get_sentiments("nrc")) %>%
   mutate(
     value = str_replace(sentiment, "anticipation|trust|joy|surprise", "positive"),
     value = str_replace(sentiment, "sadness|fear|anger|disgust", "negative"),
     value = ifelse(sentiment == "positive", 1, -1)
   ) %>%
-  group_by(id) %>%
+  group_by(topic) %>%
   summarize(value = sum(value)) %>%
   mutate(lexicon = "nrc")
 
-sentiments <- bind_rows(afinn, bing, nrc)
+# sentiments <- bind_rows(afinn, bing, nrc)
+#
+# # Make implicit missing values explicit
+# sentiments <- tidyr::complete(sentiments, id, lexicon) %>%
+#   mutate(value = replace_na(value, 0))
+#
+# sentiments %>%
+#   ggplot(aes(x = id, y = value, fill = lexicon)) +
+#   geom_col(show.legend = FALSE) +
+#   facet_wrap(~lexicon, ncol = 1) +
+#   coord_cartesian(ylim = c(-25, 25))
+#
+#
+# get_sentiments("nrc") %>%
+#   mutate(
+#     sentiment = str_replace(sentiment, "anticipation|trust|joy|surprise", "positive"),
+#     sentiment = str_replace(sentiment, "sadness|fear|anger|disgust", "negative")
+#   ) %>%
+#   count(sentiment)
 
-# Make implicit missing values explicit
-sentiments <- tidyr::complete(sentiments, id, lexicon) %>%
-  mutate(value = replace_na(value, 0))
+comments_groups <- comments %>%
+  inner_join(group_users, by = "by") %>%
+  select(c("by", "text", "topic"))
 
-sentiments %>%
-  ggplot(aes(x = id, y = value, fill = lexicon)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~lexicon, ncol = 1) +
-  coord_cartesian(ylim = c(-25, 25))
+for (i in 1:7) {
+  print(sum(comments_groups$topic == i)/nrow(comments_groups))
+  print(sum(group_users$topic == i)/nrow(group_users))
+}
 
 
-get_sentiments("nrc") %>%
-  mutate(
-    sentiment = str_replace(sentiment, "anticipation|trust|joy|surprise", "positive"),
-    sentiment = str_replace(sentiment, "sadness|fear|anger|disgust", "negative")
-  ) %>%
-  count(sentiment)
+
+
