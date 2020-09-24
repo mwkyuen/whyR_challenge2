@@ -150,6 +150,12 @@ for (i in 1:7) {
   print(sum(group_users$topic == i)/nrow(group_users))
 }
 
+comments_unnested_group <- comments_unnested %>%
+  inner_join(group_users, by = "by") %>%
+  select(by, word, topic)
 
+comments_unnested_group %>%
+  count(topic) %>%
+  mutate(proportion = n/nrow(comments_unnested_group))
 
 
