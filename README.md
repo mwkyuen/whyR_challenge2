@@ -37,6 +37,6 @@ More info: [github.com/WhyR2020/hackathon](https://github.com/WhyR2020/hackathon
 
 We submitted our solution as a presentation video where we talked about each step that we took to segment the users and some insights that we discovered when exploring the data.
 
-Video: [https://www.youtube.com/watch?v=B-cEalcxfb4](https://www.youtube.com/watch?v=B-cEalcxfb4)
+Video: [https://youtu.be/B-cEalcxfb4](https://youtu.be/B-cEalcxfb4)
 
 PowerPoint Presentation: [Presentation.pptx](Presentation.pptx)
